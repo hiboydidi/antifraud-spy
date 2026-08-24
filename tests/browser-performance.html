@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Antifraud Spy Performance Test</title>
+</head>
+<body>
+  <pre id="result">running</pre>
+  <script>
+    window.capturedEvents = [];
+    window.capturedBatches = 0;
+    window.addEventListener('message', (event) => {
+      if (event.source !== window || event.data?.type !== 'antifraud-spy-harness') return;
+      window.capturedBatches += 1;
+      window.capturedEvents.push(...(event.data.payloads || []));
+    });
+  </script>
+  <script src="../src/content/page-script.js" data-channel-id="antifraud-spy-harness"></script>
+  <script>
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    const startedAt = performance.now();
+
+    for (let index = 0; index < 100000; index += 1) {
+      context.measureText(`sample-${index % 100}`);
+    }
+
+    const synchronousDurationMs = performance.now() - startedAt;
+    setTimeout(() => {
+      const measureTextEvents = window.capturedEvents.filter(event =>
+        event.category === 'canvas' && event.method === 'measureText'
+      );
+      const capturedCallCount = measureTextEvents.reduce(
+        (total, event) => total + (event.batchCount || 1), 0
+      );
+      const result = {
+        capturedCallCount,
+        eventRecords: measureTextEvents.length,
+        messageBatches: window.capturedBatches,
+        synchronousDurationMs: Math.round(synchronousDurationMs),
+        passed: capturedCallCount === 100000 && measureTextEvents.length <= 11
+      };
+
+      document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+      document.body.dataset.status = result.passed ? 'passed' : 'failed';
+    }, 750);
+  </script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antifraud Spy</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🔍</span>
+        <span class="logo-text">Antifraud Spy</span>
+      </div>
+      <div class="controls">
+        <button id="btn-clear" class="btn btn-icon" title="Clear logs">🗑️</button>
+        <button id="btn-pause" class="btn btn-icon" title="Pause/Resume">⏸️</button>
+      </div>
+    </header>
+
+    <!-- Domain info -->
+    <div class="domain-info">
+      <span class="domain-label">Domain:</span>
+      <span id="current-domain" class="domain-value">-</span>
+    </div>
+
+    <!-- Session Stats Bar -->
+    <div class="session-stats">
+      <div class="session-stat" title="reCAPTCHA статус&#10;--: не обнаружена&#10;V3/ENTERPRISE: перехвачена&#10;Active: execute вызван&#10;Token OK: токен получен&#10;⚠️ Score доступен только серверу!">
+        <span class="session-stat-icon">🤖</span>
+        <span class="session-stat-label">reCAPTCHA:</span>
+        <span class="session-stat-value" id="recaptcha-score">--</span>
+      </div>
+      <div class="session-stat" title="Cloudflare Protection&#10;--: не обнаружена&#10;CF: Challenge Platform (invisible)&#10;Turnstile: виджет Turnstile&#10;Token OK: токен получен&#10;⚠️ Сложно обойти без решателя!">
+        <span class="session-stat-icon">☁️</span>
+        <span class="session-stat-label">Cloudflare:</span>
+        <span class="session-stat-value" id="cloudflare-status">--</span>
+      </div>
+      <div class="session-stat" title="Количество cookies в document.cookie&#10;Больше cookies = более 'прогретый' профиль&#10;🟢 >10: хорошо&#10;🟡 1-10: нормально&#10;🔴 0: холодный профиль">
+        <span class="session-stat-icon">🍪</span>
+        <span class="session-stat-label">Cookies:</span>
+        <span class="session-stat-value" id="cookies-count">--</span>
+      </div>
+      <div class="session-stat" title="Количество записей в localStorage&#10;Сайты сохраняют данные сессии&#10;Больше = дольше использовался браузер">
+        <span class="session-stat-icon">💾</span>
+        <span class="session-stat-label">Storage:</span>
+        <span class="session-stat-value" id="storage-count">--</span>
+      </div>
+      <div class="session-stat" title="Network Information API (effectiveType + RTT)&#10;4g/3g/2g - эффективный тип по скорости&#10;⚠️ Даже WiFi/Ethernet показывает '4g'&#10;если скорость соответствует 4G стандартам&#10;RTT - задержка соединения в ms">
+        <span class="session-stat-icon">📶</span>
+        <span class="session-stat-label">Network:</span>
+        <span class="session-stat-value" id="network-info">--</span>
+      </div>
+      <div class="session-stat" title="'Теплота' профиля браузера&#10;🔥 Hot: много cookies/storage или Google cookies&#10;🌡️ Warm: среднее количество данных&#10;❄️ Cold: пустой/новый профиль&#10;Холодные профили вызывают подозрения!">
+        <span class="session-stat-icon">🔥</span>
+        <span class="session-stat-label">Warmth:</span>
+        <span class="session-stat-value" id="profile-warmth">--</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="log">Log</button>
+      <button class="tab" data-tab="metrics">Metrics</button>
+      <button class="tab" data-tab="risk">Risk Score</button>
+    </div>
+
+    <!-- Tab: Log -->
+    <div id="tab-log" class="tab-content active">
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-value" id="stat-events">0</span>
+          <span class="stat-label">Events</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-requests">0</span>
+          <span class="stat-label">Requests</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-antifraud">0</span>
+          <span class="stat-label">Antifraud</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-duration">0s</span>
+          <span class="stat-label">Duration</span>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="canvas">Canvas</button>
+        <button class="filter" data-filter="webgl">WebGL</button>
+        <button class="filter" data-filter="audio">Audio</button>
+        <button class="filter" data-filter="navigator">Navigator</button>
+        <button class="filter" data-filter="network">Network</button>
+        <button class="filter" data-filter="storage">Storage</button>
+      </div>
+
+      <!-- Event Log -->
+      <div class="log-container">
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Metrics -->
+    <div id="tab-metrics" class="tab-content">
+      <div class="metrics-summary" id="metrics-summary">
+        <!-- Populated by JS -->
+      </div>
+      <div class="metrics-grid" id="metrics-grid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Tab: Risk Score -->
+    <div id="tab-risk" class="tab-content">
+      <div class="risk-container">
+        <div class="risk-score-circle" id="risk-circle">
+          <span class="risk-score-value" id="risk-score">--</span>
+          <span class="risk-score-label">Risk Score</span>
+        </div>
+        <div class="risk-level" id="risk-level">Calculating...</div>
+        <div class="risk-factors" id="risk-factors">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Export buttons -->
+    <div class="export-buttons">
+      <button id="btn-export-json" class="btn btn-export">
+        <span>📄</span> Export JSON
+      </button>
+      <button id="btn-export-md" class="btn btn-export">
+        <span>📝</span> Export Markdown
+      </button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
